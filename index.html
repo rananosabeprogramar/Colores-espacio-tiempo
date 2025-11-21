@@ -319,15 +319,17 @@
         let vAbs = Math.abs(velocidadC);
         let gamma = 1;
         
-        // Cálculo de Gamma
-        if (vAbs < 0.9999) {
-            gamma = 1 / Math.sqrt(1 - (vAbs * vAbs));
+        // 1. MEJORA: Cálculo de Gamma con manejo de límite (v -> c)
+        if (vAbs >= 0.9999999999) { // Usamos un valor muy cercano a c (10 nueves)
+            gamma = 70710.678; // Valor alto precalculado para v ≈ 0.9999999999c
         } else {
-            gamma = 5000; // Límite visual para evitar errores
+            // Implementación literal del Factor de Lorentz: γ = 1 / sqrt(1 - (v/c)^2)
+            gamma = 1 / Math.sqrt(1 - (vAbs * vAbs)); 
         }
 
-        tiempoTierra += dt * gamma; 
-        tiempoNave += dt;           
+        // 2. TEORÍA: Implementación literal de la Dilatación Temporal (Δt = γ * Δτ)
+        tiempoTierra += dt * gamma; // Tiempo del observador externo (Tierra)
+        tiempoNave += dt;           // Tiempo propio (Nave), avanza a razón de dt
 
         timeEarthEl.innerText = formatoTiempo(tiempoTierra);
         timeShipEl.innerText = formatoTiempo(tiempoNave);
@@ -336,51 +338,60 @@
 
         // --- VISUALES UNIFICADOS ---
         let colorEstrellas = "white";
+        // Contracción de Lorentz: L = L₀ / γ
         let factorContraccion = 1 / gamma;
 
         // Limpiar Canvas
         ctx.fillStyle = "rgba(0, 0, 0, 0.4)"; // Deja una estela más suave
         ctx.fillRect(0, 0, width, height);
 
-        if (velocidadC > 0) { // ACERCÁNDOSE (Blueshift)
-            let intensidad = Math.floor(vAbs * 255);
-            colorEstrellas = `rgb(${255 - intensidad}, ${255 - intensidad}, 255)`; 
-            
-            statusText.innerText = ">> ACERCÁNDOSE A TIERRA >>";
-            statusText.style.color = "#4faaff";
-            statusText.style.textShadow = "0 0 20px #4faaff";
-            
-            // Efecto slider
-            let colorStop = `rgb(0, 0, ${Math.min(255, intensidad + 100)})`;
-            slider.style.background = `linear-gradient(90deg, #222 0%, #000 50%, ${colorStop} 100%)`;
+        // 3. MEJORA: Aplicación Rigurosa de la Contracción de Lorentz (Ambos Sentidos)
+        if (velocidadC !== 0) { // Si hay movimiento
 
-            // Efecto Tierra + Contracción Lorentz
-            iconoTierra.style.opacity = 0.2 + (vAbs * 0.8); 
-            // Aumentamos tamaño pero aplicamos scaleX
-            iconoTierra.style.fontSize = (20 + (vAbs * 200)) + "px"; 
+            // Aplicación Rigurosa de la Contracción de Lorentz (scaleX(1/γ))
             iconoTierra.style.transform = `translate(-50%, -50%) scaleX(${factorContraccion})`; 
-
-        } else if (velocidadC < 0) { // ALEJÁNDOSE (Redshift)
-            let intensidad = Math.floor(vAbs * 255);
-            colorEstrellas = `rgb(255, ${255 - intensidad}, ${255 - intensidad})`; 
+            iconoTierra.style.opacity = 1;
             
-            statusText.innerText = "<< ALEJÁNDOSE AL ESPACIO <<";
-            statusText.style.color = "#ff4444";
-            statusText.style.textShadow = "0 0 20px #ff4444";
+            if (velocidadC > 0) { // ACERCÁNDOSE (Contracción + Blueshift)
+                let intensidad = Math.floor(vAbs * 255);
+                colorEstrellas = `rgb(${255 - intensidad}, ${255 - intensidad}, 255)`; 
 
-            let colorStop = `rgb(${Math.min(255, intensidad + 100)}, 0, 0)`;
-            slider.style.background = `linear-gradient(90deg, ${colorStop} 0%, #000 50%, #222 100%)`;
+                // Simulación de aproximación (crecimiento) y contracción (aplastamiento)
+                iconoTierra.style.fontSize = (20 + (vAbs * 200)) + "px"; 
+                iconoTierra.style.opacity = 0.2 + (vAbs * 0.8);
 
-            iconoTierra.style.opacity = Math.max(0, 0.5 - vAbs); 
-            iconoTierra.style.fontSize = Math.max(0, 50 - (vAbs * 50)) + "px"; 
-            iconoTierra.style.transform = `translate(-50%, -50%)`; // Reset
+                statusText.innerText = ">> ACERCÁNDOSE A TIERRA (BLUESHIFT) >>";
+                statusText.style.color = "#4faaff";
+                statusText.style.textShadow = "0 0 20px #4faaff";
 
-        } else { // DETENIDO
+                let colorStop = `rgb(0, 0, ${Math.min(255, intensidad + 100)})`;
+                slider.style.background = `linear-gradient(90deg, #222 0%, #000 50%, ${colorStop} 100%)`;
+
+            } else { // ALEJÁNDOSE (Contracción + Redshift)
+                let intensidad = Math.floor(vAbs * 255);
+                colorEstrellas = `rgb(255, ${255 - intensidad}, ${255 - intensidad})`; 
+                
+                // Simulación de alejamiento (encogimiento) y contracción (aplastamiento)
+                iconoTierra.style.fontSize = Math.max(0, 50 - (vAbs * 50)) + "px"; 
+                iconoTierra.style.opacity = Math.max(0, 0.5 - vAbs); 
+                
+                statusText.innerText = "<< ALEJÁNDOSE AL ESPACIO (REDSHIFT) <<";
+                statusText.style.color = "#ff4444";
+                statusText.style.textShadow = "0 0 20px #ff4444";
+
+                let colorStop = `rgb(${Math.min(255, intensidad + 100)}, 0, 0)`;
+                slider.style.background = `linear-gradient(90deg, ${colorStop} 0%, #000 50%, #222 100%)`;
+            }
+
+        } else { // DETENIDO (v=0)
             statusText.innerText = "MOTORES EN ESPERA";
             statusText.style.color = "white";
             statusText.style.textShadow = "0 0 10px white";
             slider.style.background = "#333";
-            iconoTierra.style.transform = `translate(-50%, -50%)`; // Reset
+            // Reset de Contracción de Lorentz (L = L₀ / 1)
+            iconoTierra.style.transform = `translate(-50%, -50%) scaleX(1)`; 
+            iconoTierra.style.fontSize = "0px";
+            iconoTierra.style.opacity = 0;
         }
 
         // Dibujar Estrellas
