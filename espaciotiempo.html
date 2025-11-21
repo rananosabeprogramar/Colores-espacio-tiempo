@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Simulador Relativista - Edición Final</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+<style>
+    /* --- ESTILOS GENERALES --- */
+    body {
+        background-color: #050505;
+        color: #e0e0e0;
+        font-family: 'Share Tech Mono', monospace; /* Fuente estilo datos */
+        margin: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100vh;
+    }
+
+    /* --- CABINA DE LA NAVE (VISUALIZADOR) --- */
+    #viewport {
+        position: relative;
+        width: 100%;
+        height: 55vh; /* Un poco más alto para inmersión */
+        background: black;
+        overflow: hidden;
+        border-bottom: 4px solid #333;
+        box-shadow: 0 0 80px rgba(0,0,0,0.9) inset;
+    }
+
+    #starfield {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+
+    .hud-overlay {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        pointer-events: none;
+        font-family: 'Orbitron', sans-serif;
+        letter-spacing: 2px;
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    }
+    
+    #icono-tierra {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 0px;
+        transition: opacity 0.2s ease; /* Transición rápida para el parpadeo */
+        opacity: 0;
+        filter: drop-shadow(0 0 15px #4faaff);
+        z-index: 5;
+        /* Aseguramos que el emoji se renderice bien */
+        line-height: 1; 
+    }
+
+    /* --- PANELES DE CONTROL --- */
+    .panel-control {
+        flex: 1;
+        width: 100%;
+        max-width: 1000px;
+        background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%);
+        border-top: 1px solid #444;
+        padding: 15px 30px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-evenly;
+        box-sizing: border-box;
+    }
+
+    /* Relojes - AHORA MÁS GRANDES */
+    .relojes {
+        display: flex;
+        justify-content: space-around;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 15px;
+        border-radius: 15px;
+        border: 1px solid #333;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5) inset;
+    }
+    .caja-reloj { text-align: center; width: 45%; }
+    
+    .label-reloj { 
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1em; 
+        color: #888; 
+        display: block; 
+        margin-bottom: 5px; 
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .time-display { 
+        font-size: 3.5em; /* Mucho más grande */
+        font-weight: normal; 
+        letter-spacing: 3px;
+        margin-top: 5px;
+    }
+    
+    /* Colores Neón intensos */
+    #time-earth { color: #2f2; text-shadow: 0 0 15px #0f0, 0 0 30px #0f0; }
+    #time-ship { color: #2ff; text-shadow: 0 0 15px #0ff, 0 0 30px #0ff; }
+
+    /* Datos Científicos */
+    .datos {
+        display: flex;
+        justify-content: space-between;
+        font-size: 1.4em;
+        color: #ffcc00;
+        text-shadow: 0 0 10px #ffcc00;
+        padding: 0 20px;
+    }
+
+    /* --- BARRA DE CONTROL --- */
+    .control-velocidad {
+        text-align: center;
+        position: relative;
+        padding: 10px 0;
+    }
+    
+    .status-msg {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 900;
+        margin-bottom: 15px;
+        font-size: 1.8em; /* Texto de estado más grande */
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        height: 40px; /* Evita saltos */
+    }
+
+    /* Slider mejorado */
+    input[type=range] {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 12px;
+        border-radius: 6px;
+        background: #222;
+        outline: none;
+        border: 1px solid #555;
+        cursor: pointer;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5) inset;
+    }
+    
+    input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: #eee;
+        cursor: pointer;
+        box-shadow: 0 0 15px white;
+        margin-top: -10px; /* Centrar verticalmente */
+        border: 2px solid #000;
+        position: relative;
+        top: 50%;
+    }
+
+    .etiquetas-slider {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.9em;
+        color: #666;
+        margin-top: 10px;
+        font-family: 'Orbitron', sans-serif;
+    }
+</style>
+</head>
+<body>
+
+    <div id="viewport">
+        <canvas id="starfield"></canvas>
+        <div class="hud-overlay">
+            <div style="color: #0f0; border: 1px solid #0f0; padding: 5px 10px; display:inline-block; background: rgba(0,20,0,0.6);">
+                VISTA HUD // SISTEMA NAV-v3
+            </div>
+        </div>
+        <div id="icono-tierra">🌍</div>
+    </div>
+
+    <div class="panel-control">
+        
+        <div class="control-velocidad">
+            <div id="status-text" class="status-msg" style="color: white; text-shadow: 0 0 10px white;">
+                MOTORES EN ESPERA
+            </div>
+            
+            <input type="range" id="velocidad" min="-99.9" max="99.9" step="0.1" value="0">
+            
+            <div class="etiquetas-slider">
+                <span style="color: #ff4444;">◄ REDSHIFT (Alejarse)</span>
+                <span>STOP</span>
+                <span style="color: #4488ff;">BLUESHIFT (Acercarse) ►</span>
+            </div>
+        </div>
+
+        <div class="datos">
+            <span id="gamma-display">γ: 1.000</span>
+            <span id="velocidad-display">v: 0.000c</span>
+        </div>
+
+        <div class="relojes">
+            <div class="caja-reloj">
+                <span class="label-reloj">TIEMPO TIERRA</span>
+                <div id="time-earth" class="time-display">00:00:00</div>
+            </div>
+            <div class="caja-reloj">
+                <span class="label-reloj">TIEMPO NAVE</span>
+                <div id="time-ship" class="time-display">00:00:00</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- CONFIGURACIÓN E INICIALIZACIÓN ---
+    const slider = document.getElementById('velocidad');
+    const statusText = document.getElementById('status-text');
+    const gammaDisplay = document.getElementById('gamma-display');
+    const velDisplay = document.getElementById('velocidad-display');
+    const timeEarthEl = document.getElementById('time-earth');
+    const timeShipEl = document.getElementById('time-ship');
+    const iconoTierra = document.getElementById('icono-tierra');
+    
+    // Canvas para las estrellas
+    const canvas = document.getElementById('starfield');
+    const ctx = canvas.getContext('2d');
+
+    // Variables de Física
+    let velocidadPct = 0; // Porcentaje (-99.9 a 99.9)
+    let velocidadC = 0;   // Fracción de c (-0.999 a 0.999)
+    let tiempoTierra = 0;
+    let tiempoNave = 0;
+    let lastTimestamp = Date.now();
+
+    // Variables de Estrellas
+    let stars = [];
+    const numStars = 500; // ¡Más estrellas para más inmersión!
+    let width, height;
+
+    function resizeCanvas() {
+        width = canvas.parentElement.offsetWidth;
+        height = canvas.parentElement.offsetHeight;
+        canvas.width = width;
+        canvas.height = height;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    class Star {
+        constructor() {
+            this.reset();
+            // Esparcir inicialmente por todo el volumen
+            this.z = Math.random() * width; 
+        }
+        
+        reset() {
+            this.x = (Math.random() - 0.5) * width * 2; 
+            this.y = (Math.random() - 0.5) * height * 2;
+            this.z = width; // Empiezan al fondo o frente
+        }
+
+        update(speed) {
+            this.z -= speed * 30; // Velocidad de animación
+
+            if (this.z < 1) { // Se acerca demasiado
+                this.z = width;
+                this.x = (Math.random() - 0.5) * width * 2;
+                this.y = (Math.random() - 0.5) * height * 2;
+            } else if (this.z > width) { // Se aleja demasiado
+                this.z = 1;
+                this.x = (Math.random() - 0.5) * width * 2;
+                this.y = (Math.random() - 0.5) * height * 2;
+            }
+        }
+
+        draw(ctx, colorRGB) {
+            let sx = (this.x / this.z) * (width / 2) + (width / 2);
+            let sy = (this.y / this.z) * (height / 2) + (height / 2);
+            
+            // Estrellas más grandes si están cerca
+            let r = (1 - this.z / width) * 2.5; 
+            if (r < 0) r = 0;
+
+            ctx.beginPath();
+            ctx.fillStyle = colorRGB;
+            ctx.arc(sx, sy, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    for (let i = 0; i < numStars; i++) {
+        stars.push(new Star());
+    }
+
+    function formatoTiempo(s) {
+        let min = Math.floor(s / 60);
+        let sec = Math.floor(s % 60);
+        let ms = Math.floor((s % 1) * 100);
+        return `${min < 10 ? '0'+min : min}:${sec < 10 ? '0'+sec : sec}.${ms < 10 ? '0'+ms : ms}`;
+    }
+
+    // --- LOOP PRINCIPAL ---
+    function loop() {
+        let now = Date.now();
+        let dt = (now - lastTimestamp) / 1000;
+        lastTimestamp = now;
+
+        velocidadPct = parseFloat(slider.value);
+        velocidadC = velocidadPct / 100;
+
+        let vAbs = Math.abs(velocidadC);
+        let gamma = 1;
+        
+        // Cálculo de Gamma
+        if (vAbs < 0.9999) {
+            gamma = 1 / Math.sqrt(1 - (vAbs * vAbs));
+        } else {
+            gamma = 5000; // Límite visual para evitar errores
+        }
+
+        tiempoTierra += dt * gamma; 
+        tiempoNave += dt;           
+
+        timeEarthEl.innerText = formatoTiempo(tiempoTierra);
+        timeShipEl.innerText = formatoTiempo(tiempoNave);
+        gammaDisplay.innerText = `γ: ${gamma.toFixed(3)}`;
+        velDisplay.innerText = `v: ${velocidadC.toFixed(3)}c`;
+
+        // --- VISUALES UNIFICADOS ---
+        let colorEstrellas = "white";
+        let factorContraccion = 1 / gamma;
+
+        // Limpiar Canvas
+        ctx.fillStyle = "rgba(0, 0, 0, 0.4)"; // Deja una estela más suave
+        ctx.fillRect(0, 0, width, height);
+
+        if (velocidadC > 0) { // ACERCÁNDOSE (Blueshift)
+            let intensidad = Math.floor(vAbs * 255);
+            colorEstrellas = `rgb(${255 - intensidad}, ${255 - intensidad}, 255)`; 
+            
+            statusText.innerText = ">> ACERCÁNDOSE A TIERRA >>";
+            statusText.style.color = "#4faaff";
+            statusText.style.textShadow = "0 0 20px #4faaff";
+            
+            // Efecto slider
+            let colorStop = `rgb(0, 0, ${Math.min(255, intensidad + 100)})`;
+            slider.style.background = `linear-gradient(90deg, #222 0%, #000 50%, ${colorStop} 100%)`;
+
+            // Efecto Tierra + Contracción Lorentz
+            iconoTierra.style.opacity = 0.2 + (vAbs * 0.8); 
+            // Aumentamos tamaño pero aplicamos scaleX
+            iconoTierra.style.fontSize = (20 + (vAbs * 200)) + "px"; 
+            iconoTierra.style.transform = `translate(-50%, -50%) scaleX(${factorContraccion})`; 
+
+        } else if (velocidadC < 0) { // ALEJÁNDOSE (Redshift)
+            let intensidad = Math.floor(vAbs * 255);
+            colorEstrellas = `rgb(255, ${255 - intensidad}, ${255 - intensidad})`; 
+            
+            statusText.innerText = "<< ALEJÁNDOSE AL ESPACIO <<";
+            statusText.style.color = "#ff4444";
+            statusText.style.textShadow = "0 0 20px #ff4444";
+
+            let colorStop = `rgb(${Math.min(255, intensidad + 100)}, 0, 0)`;
+            slider.style.background = `linear-gradient(90deg, ${colorStop} 0%, #000 50%, #222 100%)`;
+
+            iconoTierra.style.opacity = Math.max(0, 0.5 - vAbs); 
+            iconoTierra.style.fontSize = Math.max(0, 50 - (vAbs * 50)) + "px"; 
+            iconoTierra.style.transform = `translate(-50%, -50%)`; // Reset
+
+        } else { // DETENIDO
+            statusText.innerText = "MOTORES EN ESPERA";
+            statusText.style.color = "white";
+            statusText.style.textShadow = "0 0 10px white";
+            slider.style.background = "#333";
+            iconoTierra.style.transform = `translate(-50%, -50%)`; // Reset
+        }
+
+        // Dibujar Estrellas
+        stars.forEach(star => {
+            star.update(velocidadC);
+            star.draw(ctx, colorEstrellas);
+        });
+
+        requestAnimationFrame(loop);
+    }
+
+    loop();
+</script>
+</body>
+</html>
